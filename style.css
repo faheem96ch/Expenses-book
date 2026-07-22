@@ -412,3 +412,11 @@ td { padding: 10px 12px; vertical-align: middle; }
   .header-top { flex-direction: column; gap: 10px; }
   .student-grid { grid-template-columns: 1fr; }
 }
+
+.tip-text {
+  color: #1a7a1a;
+  font-family: 'Bookman Old Style', 'URW Bookman', serif;
+  text-transform: lowercase;
+  font-weight: 400;
+  letter-spacing: 0;
+}
