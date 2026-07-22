@@ -52,7 +52,13 @@
     </header>
 
     <section class="card">
-      <h2 class="section-title">Add New Entry</h2>
+      <div class="card-header-row">
+        <h2 class="section-title">Add New Entry</h2>
+        <button class="myself-btn" id="myselfToggleBtn" type="button">
+          <span class="myself-icon">＋</span>
+          Myself
+        </button>
+      </div>
 
       <div class="grid-2">
         <div class="field">
@@ -60,7 +66,7 @@
           <input type="text" id="studentName" placeholder="Student name"/>
         </div>
         <div class="field">
-          <label for="lenderName">Boy's Name <span class="tip-text">(Note: different names create different Accounts)</span></label>
+          <label for="lenderName">Boy's Name <span class="tip-text">(tip: different names create different accounts)</span></label>
           <input type="text" id="lenderName" placeholder="Your name"/>
         </div>
       </div>
@@ -125,6 +131,84 @@
       </div>
     </section>
 
+  </div>
+
+  <!-- ===== MYSELF PRIVATE PAGE (opens on top when Myself is clicked) ===== -->
+  <div class="myself-page" id="myselfPage" style="display:none;">
+    <div class="myself-page-inner">
+      <div class="myself-page-header">
+        <h1>My Account</h1>
+        <button class="btn-close-myself" id="closeMyselfBtn" type="button">Close ✕</button>
+      </div>
+
+      <section class="card">
+        <h2 class="section-title">My Loans</h2>
+
+        <div class="field">
+          <label for="ownFromName">Given By</label>
+          <input type="text" id="ownFromName" placeholder="Person's name"/>
+        </div>
+
+        <div class="grid-3">
+          <div class="field">
+            <label for="ownAmount">Amount (Rs.)</label>
+            <div class="prefix-wrap">
+              <span class="prefix">Rs.</span>
+              <input type="number" id="ownAmount" placeholder="0" min="1"/>
+            </div>
+          </div>
+          <div class="field">
+            <label for="ownDate">Date</label>
+            <input type="date" id="ownDate"/>
+          </div>
+          <div class="field">
+            <label for="ownTime">Time</label>
+            <input type="time" id="ownTime"/>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="ownReason">Purpose / Reason</label>
+          <input type="text" id="ownReason" placeholder="What the money was for"/>
+        </div>
+
+        <button class="btn-primary" id="ownSubmitBtn">Add Entry</button>
+      </section>
+
+      <section class="card">
+        <div class="records-header">
+          <div>
+            <h2 class="section-title">People I Pay Back</h2>
+            <span class="count-badge" id="ownStudentCountBadge">0 People</span>
+          </div>
+        </div>
+        <div id="ownAccountsArea"></div>
+      </section>
+
+      <section class="card">
+        <div class="records-header">
+          <div>
+            <h2 class="section-title" id="ownRecordsTitle">My Loan History</h2>
+            <span class="count-badge" id="ownCountBadge">0 Records</span>
+          </div>
+          <div class="records-header-actions">
+            <button class="btn-clear-filter" id="ownClearFilterBtn" style="display:none;" onclick="clearOwnFilter()">
+              Show All
+            </button>
+            <button class="btn-download-all" id="ownDownloadAllBtn" style="display:none;" onclick="downloadOwnAllPDF()">
+              Download receipts
+            </button>
+          </div>
+        </div>
+
+        <div id="ownTableArea"></div>
+
+        <div class="total-bar" id="ownTotalBar" style="display:none;">
+          <span class="total-label" id="ownTotalLabel">Total Borrowed</span>
+          <span class="total-value" id="ownTotalAmount">Rs. 0</span>
+        </div>
+      </section>
+    </div>
   </div>
 
   <div id="toast">Entry added</div>

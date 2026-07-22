@@ -17,7 +17,7 @@
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: Arial, sans-serif;
+  font-family: 'Bookman Old Style', 'URW Bookman', 'Bookman', serif;
   font-size: 14px;
   line-height: 1.6;
   min-height: 100vh;
@@ -81,7 +81,7 @@ input {
   border-radius: var(--r);
   padding: 9px 12px;
   color: var(--text);
-  font-family: Arial, sans-serif;
+  font-family: 'Bookman Old Style', 'URW Bookman', 'Bookman', serif;
   font-size: 0.9rem;
   outline: none;
   width: 100%;
@@ -109,7 +109,7 @@ input::placeholder { color: #bbb; }
   padding: 11px;
   background: var(--accent);
   color: #fff;
-  font-family: Arial, sans-serif;
+  font-family: 'Bookman Old Style', 'URW Bookman', 'Bookman', serif;
   font-size: 0.9rem;
   font-weight: 700;
   border: none;
@@ -123,7 +123,7 @@ input::placeholder { color: #bbb; }
   padding: 8px 16px;
   background: var(--accent);
   color: #fff;
-  font-family: Arial, sans-serif;
+  font-family: 'Bookman Old Style', 'URW Bookman', 'Bookman', serif;
   font-size: 0.82rem;
   font-weight: 700;
   border: none;
@@ -183,7 +183,7 @@ td { padding: 10px 12px; vertical-align: middle; }
   border: 1px solid rgba(245, 128, 93, 0.3);
   border-radius: 4px;
   cursor: pointer;
-  font-family: Arial, sans-serif;
+  font-family: 'Bookman Old Style', 'URW Bookman', 'Bookman', serif;
   font-size: 0.75rem;
   font-weight: 700;
   transition: all 0.15s;
@@ -211,7 +211,7 @@ td { padding: 10px 12px; vertical-align: middle; }
   transform: translateX(-50%) translateY(70px);
   background: var(--accent);
   color: #fff;
-  font-family: Arial, sans-serif;
+  font-family: 'Bookman Old Style', 'URW Bookman', 'Bookman', serif;
   font-weight: 700;
   font-size: 0.85rem;
   padding: 10px 26px;
@@ -312,7 +312,7 @@ td { padding: 10px 12px; vertical-align: middle; }
   border: 1px solid var(--border);
   border-radius: var(--r);
   cursor: pointer;
-  font-family: Arial, sans-serif;
+  font-family: 'Bookman Old Style', 'URW Bookman', 'Bookman', serif;
   font-size: 0.78rem;
   font-weight: 700;
   transition: all 0.15s;
@@ -369,7 +369,7 @@ td { padding: 10px 12px; vertical-align: middle; }
   padding: 7px 10px;
   border-radius: 4px;
   cursor: pointer;
-  font-family: Arial, sans-serif;
+  font-family: 'Bookman Old Style', 'URW Bookman', 'Bookman', serif;
   font-size: 0.75rem;
   font-weight: 700;
   border: 1px solid var(--border);
@@ -400,7 +400,7 @@ td { padding: 10px 12px; vertical-align: middle; }
   border: 1px solid var(--border);
   border-radius: var(--r);
   cursor: pointer;
-  font-family: Arial, sans-serif;
+  font-family: 'Bookman Old Style', 'URW Bookman', 'Bookman', serif;
   font-size: 0.82rem;
   font-weight: 700;
   transition: all 0.15s;
@@ -413,6 +413,7 @@ td { padding: 10px 12px; vertical-align: middle; }
   .student-grid { grid-template-columns: 1fr; }
 }
 
+/* ===== Tip text next to Boy's Name label ===== */
 .tip-text {
   color: #1a7a1a;
   font-family: 'Bookman Old Style', 'URW Bookman', serif;
@@ -420,3 +421,81 @@ td { padding: 10px 12px; vertical-align: middle; }
   font-weight: 400;
   letter-spacing: 0;
 }
+
+/* ===== Card header row (title + Myself button side by side) ===== */
+.card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.card-header-row .section-title { margin-bottom: 0; }
+
+.myself-btn {
+  width: auto;
+  flex-shrink: 0;
+  background: #1a9c4a;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 12px;
+  font-family: 'Bookman Old Style', 'URW Bookman', 'Bookman', serif;
+  font-weight: 700;
+  font-size: 0.68rem;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(26, 156, 74, 0.35);
+  transition: all 0.15s;
+}
+.myself-btn:hover { background: #157a3b; transform: translateY(-1px); }
+.myself-icon { font-size: 0.9rem; line-height: 1; }
+
+
+/* ===== Myself private page (opens on top of everything) ===== */
+.myself-page {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 500;
+  overflow-y: auto;
+  padding: 30px 18px 70px;
+}
+
+.myself-page-inner {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.myself-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--text);
+}
+
+.myself-page-header h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1a9c4a;
+}
+
+.btn-close-myself {
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  cursor: pointer;
+  font-family: 'Bookman Old Style', 'URW Bookman', 'Bookman', serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+.btn-close-myself:hover { background: var(--bg); border-color: var(--text); }

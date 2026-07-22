@@ -158,6 +158,8 @@ function initApp() {
   if (appInitialized) {
     renderStudentAccounts();
     renderTable();
+    renderOwnAccounts();
+    renderOwnTable();
     return;
   }
   appInitialized = true;
@@ -167,8 +169,28 @@ function initApp() {
   document.getElementById('time').value = now.toTimeString().slice(0, 5);
   document.getElementById('submitBtn').addEventListener('click', addRecord);
 
+  document.getElementById('ownDate').value = now.toISOString().split('T')[0];
+  document.getElementById('ownTime').value = now.toTimeString().slice(0, 5);
+  document.getElementById('ownSubmitBtn').addEventListener('click', addOwnRecord);
+  document.getElementById('myselfToggleBtn').addEventListener('click', openMyselfPage);
+  document.getElementById('closeMyselfBtn').addEventListener('click', closeMyselfPage);
+
   renderStudentAccounts();
   renderTable();
+  renderOwnAccounts();
+  renderOwnTable();
+}
+
+function openMyselfPage() {
+  document.getElementById('myselfPage').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  renderOwnAccounts();
+  renderOwnTable();
+}
+
+function closeMyselfPage() {
+  document.getElementById('myselfPage').style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 function addRecord() {
@@ -522,6 +544,322 @@ function buildPDF(recordsList, titleText, filenamePrefix) {
     doc.setTextColor(140, 140, 140);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    doc.text('Copyright © 2026 96CH Register — ' + today, W / 2, H - 7, { align: 'center' });
+    doc.text('Copyright © M.Faheem Register — ' + today, W / 2, H - 7, { align: 'center' });
+  }
+}
+
+/* ============================================================
+   MY OWN ACCOUNT — money the logged-in user borrowed from others
+   (kept in a separate localStorage key from the main records)
+   ============================================================ */
+let ownRecords = JSON.parse(localStorage.getItem('myOwnDebt') || '[]');
+let ownCurrentFilter = null; // person's name currently being viewed, or null = all
+
+function addOwnRecord() {
+  const from    = document.getElementById('ownFromName').value.trim();
+  const amount  = parseFloat(document.getElementById('ownAmount').value);
+  const date    = document.getElementById('ownDate').value;
+  const timeRaw = document.getElementById('ownTime').value;
+  const time    = convertTo12hr(timeRaw);
+  const reason  = document.getElementById('ownReason').value.trim();
+
+  if (!from)   { alert('Plz enter who you borrowed from.'); return; }
+  if (!amount || amount <= 0) { alert('Plz enter a valid amount.'); return; }
+  if (!date)   { alert('Plz select a date.'); return; }
+  if (!reason) { alert('Plz enter a reason.'); return; }
+
+  ownRecords.unshift({ id: Date.now(), from, amount, date, time, reason });
+  saveOwn();
+  renderOwnAccounts();
+  renderOwnTable();
+  resetOwnForm();
+  showToast();
+}
+
+function saveOwn() {
+  localStorage.setItem('myOwnDebt', JSON.stringify(ownRecords));
+}
+
+function deleteOwnRecord(id) {
+  if (!confirm('Delete this record?')) return;
+  ownRecords = ownRecords.filter(r => r.id !== id);
+  saveOwn();
+  renderOwnAccounts();
+  renderOwnTable();
+}
+
+function resetOwnForm() {
+  document.getElementById('ownAmount').value = '';
+  document.getElementById('ownReason').value = '';
+  const now = new Date();
+  document.getElementById('ownDate').value = now.toISOString().split('T')[0];
+  document.getElementById('ownTime').value = now.toTimeString().slice(0, 5);
+}
+
+/* ---- Grouped by the person the money was borrowed from ---- */
+function getOwnGroups() {
+  const groups = {};
+  ownRecords.forEach(r => {
+    const key = r.from.trim().toLowerCase();
+    if (!groups[key]) groups[key] = { name: r.from.trim(), total: 0, count: 0 };
+    groups[key].total += r.amount;
+    groups[key].count += 1;
+  });
+  return Object.values(groups).sort((a, b) => b.total - a.total);
+}
+
+function renderOwnAccounts() {
+  const area  = document.getElementById('ownAccountsArea');
+  const badge = document.getElementById('ownStudentCountBadge');
+  const groups = getOwnGroups();
+
+  badge.textContent = groups.length + ' People';
+
+  if (groups.length === 0) {
+    area.innerHTML = '<div class="empty-state">You have not added anyone yet.</div>';
+    return;
+  }
+
+  let html = '<div class="student-grid">';
+  groups.forEach(g => {
+    const isActive = ownCurrentFilter && ownCurrentFilter.toLowerCase() === g.name.toLowerCase();
+    html += `<div class="student-account-card${isActive ? ' active' : ''}">
+      <div class="student-account-name">${esc(g.name)}</div>
+      <div class="student-account-meta">${g.count} ${g.count === 1 ? 'entry' : 'entries'}</div>
+      <div class="student-account-total">Rs. ${g.total.toLocaleString('en-PK')}</div>
+      <div class="student-account-actions">
+        <button class="btn-view" onclick="filterByOwnPerson('${escAttr(g.name)}')">View Ledger</button>
+        <button class="btn-student-download" onclick="downloadOwnPersonPDF('${escAttr(g.name)}')">Download</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  area.innerHTML = html;
+}
+
+function filterByOwnPerson(name) {
+  ownCurrentFilter = name;
+  renderOwnAccounts();
+  renderOwnTable();
+  document.getElementById('ownTableArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function clearOwnFilter() {
+  ownCurrentFilter = null;
+  renderOwnAccounts();
+  renderOwnTable();
+}
+
+function renderOwnTable() {
+  const area     = document.getElementById('ownTableArea');
+  const badge    = document.getElementById('ownCountBadge');
+  const bar      = document.getElementById('ownTotalBar');
+  const dlBtn    = document.getElementById('ownDownloadAllBtn');
+  const clearBtn = document.getElementById('ownClearFilterBtn');
+  const titleEl  = document.getElementById('ownRecordsTitle');
+  const totalLabelEl = document.getElementById('ownTotalLabel');
+
+  const visible = ownCurrentFilter
+    ? ownRecords.filter(r => r.from.trim().toLowerCase() === ownCurrentFilter.toLowerCase())
+    : ownRecords;
+
+  if (ownCurrentFilter) {
+    titleEl.textContent = 'Given By ' + ownCurrentFilter;
+    totalLabelEl.textContent = 'Total Owed to ' + ownCurrentFilter;
+    clearBtn.style.display = 'inline-block';
+    dlBtn.textContent = 'Download ' + ownCurrentFilter + "'s Receipt";
+    dlBtn.onclick = () => downloadOwnPersonPDF(ownCurrentFilter);
+  } else {
+    titleEl.textContent = 'My Loan History';
+    totalLabelEl.textContent = 'Total Borrowed';
+    clearBtn.style.display = 'none';
+    dlBtn.textContent = 'Download receipts';
+    dlBtn.onclick = () => downloadOwnAllPDF();
+  }
+
+  badge.textContent = visible.length + ' Records';
+
+  if (visible.length === 0) {
+    area.innerHTML = '<div class="empty-state">No records added yet.</div>';
+    bar.style.display = 'none';
+    dlBtn.style.display = 'none';
+    return;
+  }
+
+  const total = visible.reduce((s, r) => s + r.amount, 0);
+  document.getElementById('ownTotalAmount').textContent = 'Rs. ' + total.toLocaleString('en-PK');
+  bar.style.display = 'flex';
+  dlBtn.style.display = 'inline-block';
+
+  let rows = '';
+  visible.forEach((r, i) => {
+    const serial = visible.length - i;
+    rows += `<tr>
+      <td class="td-muted">${serial}</td>
+      <td class="td-bold">${esc(r.from)}</td>
+      <td class="td-amount">Rs. ${r.amount.toLocaleString('en-PK')}</td>
+      <td class="td-reason" title="${esc(r.reason)}">${esc(r.reason)}</td>
+      <td class="td-muted" style="white-space:nowrap;">${r.date} &nbsp; ${r.time}</td>
+      <td><button class="btn-del" onclick="deleteOwnRecord(${r.id})">Delete</button></td>
+    </tr>`;
+  });
+
+  area.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>#</th><th>Given By</th><th>Amount</th><th>Reason</th><th>Date / Time</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+/* ---- PDF for own borrowed money ---- */
+function downloadOwnAllPDF() {
+  const list = ownCurrentFilter
+    ? ownRecords.filter(r => r.from.trim().toLowerCase() === ownCurrentFilter.toLowerCase())
+    : ownRecords;
+  const title = ownCurrentFilter ? 'Given By ' + ownCurrentFilter : 'My Loans Receipt';
+  const filePrefix = ownCurrentFilter ? ownCurrentFilter.replace(/\s+/g, '_') + '_Owed_Receipt' : 'My_Loans_Receipt';
+  buildOwnPDF(list, title, filePrefix);
+}
+
+function downloadOwnPersonPDF(personName) {
+  const list = ownRecords.filter(r => r.from.trim().toLowerCase() === personName.toLowerCase());
+  if (list.length === 0) return;
+  const title = 'Given By ' + personName;
+  const filePrefix = personName.replace(/\s+/g, '_') + '_Owed_Receipt';
+  buildOwnPDF(list, title, filePrefix);
+}
+
+function buildOwnPDF(recordsList, titleText, filenamePrefix) {
+  if (recordsList.length === 0) return;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W      = doc.internal.pageSize.getWidth();
+  const H      = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const today  = new Date().toLocaleDateString('en-PK');
+  const total  = recordsList.reduce((s, r) => s + r.amount, 0);
+
+  // Columns: #, Given By, Amount, Date/Time, Reason
+  const cols = [
+    { x: margin,       w: 10 },
+    { x: margin + 10,  w: 46 },
+    { x: margin + 56,  w: 30 },
+    { x: margin + 86,  w: 30 },
+    { x: margin + 116, w: W - margin - 116 - margin }
+  ];
+  const headers = ['No.', 'Given By', 'Amount', 'Date / Time', 'Reason'];
+
+  function pageHeader(isFirst) {
+    doc.setFillColor(26, 58, 92);
+    doc.rect(0, 0, W, isFirst ? 28 : 18, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(isFirst ? 16 : 11);
+    doc.text(titleText.toUpperCase(), W / 2, isFirst ? 12 : 11, { align: 'center' });
+    if (isFirst) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text('List of Records   Print Date: ' + today, W / 2, 21, { align: 'center' });
+    }
+  }
+
+  pageHeader(true);
+
+  doc.setFillColor(255, 245, 245);
+  doc.setDrawColor(200, 180, 180);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(margin, 33, W - margin * 2, 12, 2, 2, 'FD');
+  doc.setTextColor(80, 80, 80);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text('Total Records: ' + recordsList.length, margin + 4, 41);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(139, 0, 0);
+  doc.setFontSize(9);
+  doc.text('Total Borrowed: Rs. ' + total.toLocaleString('en-PK'), W - margin - 4, 41, { align: 'right' });
+
+  let y = 52;
+
+  function drawTableHeader() {
+    doc.setFillColor(235, 235, 235);
+    doc.rect(margin, y, W - margin * 2, 8, 'F');
+    doc.setDrawColor(170, 170, 170);
+    doc.setLineWidth(0.3);
+    doc.rect(margin, y, W - margin * 2, 8, 'S');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(60, 60, 60);
+    headers.forEach((h, i) => doc.text(h, cols[i].x + 2, y + 5.5));
+    y += 10;
+  }
+
+  drawTableHeader();
+
+  const orderedRecords = [...recordsList].reverse();
+  orderedRecords.forEach((r, idx) => {
+    doc.setFontSize(7.5);
+    const reasonLines = doc.splitTextToSize(String(r.reason), cols[4].w - 4);
+    const rowH = Math.max(9, reasonLines.length * 4.5 + 3);
+
+    if (y + rowH > H - 20) {
+      drawPageFooter();
+      doc.addPage();
+      pageHeader(false);
+      y = 24;
+      drawTableHeader();
+    }
+
+    const bg = idx % 2 === 0 ? [255, 255, 255] : [249, 249, 249];
+    doc.setFillColor(...bg);
+    doc.rect(margin, y, W - margin * 2, rowH, 'F');
+    doc.setDrawColor(215, 215, 215);
+    doc.setLineWidth(0.2);
+    doc.line(margin, y + rowH, W - margin, y + rowH);
+
+    const midY = y + rowH / 2 + 1.5;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(130, 130, 130);
+    doc.text(String(idx + 1), cols[0].x + 2, midY);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(26, 26, 26);
+    doc.text(doc.splitTextToSize(r.from, cols[1].w - 4), cols[1].x + 2, midY);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(139, 0, 0);
+    doc.text('Rs. ' + r.amount.toLocaleString('en-PK'), cols[2].x + 2, midY);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 100, 100);
+    doc.text(r.date, cols[3].x + 2, y + rowH / 2 - 0.5);
+    doc.text(r.time, cols[3].x + 2, y + rowH / 2 + 4);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(26, 26, 26);
+    const reasonTopY = y + (rowH - reasonLines.length * 4.5) / 2 + 3;
+    doc.text(reasonLines, cols[4].x + 2, reasonTopY);
+
+    y += rowH;
+  });
+
+  drawPageFooter();
+  doc.save(filenamePrefix + '_' + today.replace(/\//g, '-') + '.pdf');
+
+  function drawPageFooter() {
+    doc.setDrawColor(26, 58, 92);
+    doc.setLineWidth(0.4);
+    doc.line(margin, H - 12, W - margin, H - 12);
+    doc.setTextColor(140, 140, 140);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.text('Copyright © M.Faheem Register — ' + today, W / 2, H - 7, { align: 'center' });
   }
 }
