@@ -174,11 +174,33 @@ function initApp() {
   document.getElementById('ownSubmitBtn').addEventListener('click', addOwnRecord);
   document.getElementById('myselfToggleBtn').addEventListener('click', openMyselfPage);
   document.getElementById('closeMyselfBtn').addEventListener('click', closeMyselfPage);
+  document.getElementById('closeAboutBtn').addEventListener('click', closeAboutModal);
+  document.getElementById('footerToggleBtn').addEventListener('click', toggleFooter);
 
   renderStudentAccounts();
   renderTable();
   renderOwnAccounts();
   renderOwnTable();
+}
+
+
+
+function toggleFooter() {
+  const footer = document.getElementById('siteFooter');
+  const arrow  = document.getElementById('footerToggleArrow');
+  const isHidden = footer.style.display === 'none' || footer.style.display === '';
+  footer.style.display = isHidden ? 'block' : 'none';
+  arrow.classList.toggle('rotated', isHidden);
+}
+
+
+
+function openAboutModal() {
+  document.getElementById('aboutModal').style.display = 'flex';
+}
+
+function closeAboutModal() {
+  document.getElementById('aboutModal').style.display = 'none';
 }
 
 function openMyselfPage() {
