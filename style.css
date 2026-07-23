@@ -4,8 +4,9 @@
   --border:     #d0d0d0;
   --text:       #1a1a1a;
   --muted:      #777;
-  --accent:     #1a3a5c;
-  --accent-h:   #122840;
+  --accent:     #065F46;
+  --accent-h:   #04402f;
+  --accent-2:   #00a6ff;
   --danger:     #ec4f83;
   --danger-bg:  #fff5f5;
   --input-bg:   #fafafa;
@@ -14,6 +15,7 @@
 
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
+html { overflow-x: hidden; }
 body {
   background: var(--bg);
   color: var(--text);
@@ -21,6 +23,7 @@ body {
   font-size: 14px;
   line-height: 1.6;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .container {
@@ -30,14 +33,28 @@ body {
 }
 
 .header {
-  margin-bottom: 28px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid var(--text);
+  position: relative;
+  margin-bottom: 24px;
+  padding: 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: 0 3px 12px rgba(26, 58, 92, 0.06);
+  overflow: hidden;
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent) var(--accent));
 }
 
 .header h1 {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 700;
+  color: var(--accent);
   letter-spacing: -0.3px;
 }
 
@@ -88,7 +105,7 @@ input {
   transition: border-color 0.15s;
 }
 
-input:focus { border-color: var(--accent); }
+input:focus { border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(0, 166, 255, 0.15); }
 input::placeholder { color: #bbb; }
 
 .prefix-wrap { position:relative; }
@@ -235,21 +252,61 @@ td { padding: 10px 12px; vertical-align: middle; }
   align-items: center;
   justify-content: center;
   padding: 20px;
+  background: linear-gradient(150deg, #e1e9f7 0%, var(--bg) 55%, #d9f7e1 100%);
 }
 
 .auth-card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 34px 30px;
+  border-radius: 14px;
+  padding: 40px 32px 32px;
   width: 100%;
   max-width: 380px;
+  box-shadow: 0 16px 40px rgba(26, 92, 56, 0.14);
+  overflow: hidden;
 }
 
+.auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 5px;
+}
+
+.auth-badge {
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(13, 233, 86, 0.28);
+}
+.auth-badge svg { width: 28px; height: 28px; }
+
+.auth-input-wrap { position: relative; }
+.auth-input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.auth-input-wrap input { padding-left: 36px; }
+.auth-input-wrap:focus-within .auth-input-icon { color: var(--accent-2); }
+
 .auth-title {
-  font-size: 1.35rem;
+  font-size: 1.4rem;
   font-weight: 700;
   text-align: center;
+  color: var(--accent);
   letter-spacing: -0.3px;
 }
 
@@ -258,7 +315,7 @@ td { padding: 10px 12px; vertical-align: middle; }
   font-size: 0.85rem;
   text-align: center;
   margin-top: 4px;
-  margin-bottom: 22px;
+  margin-bottom: 24px;
 }
 
 .auth-error {
@@ -300,9 +357,12 @@ td { padding: 10px 12px; vertical-align: middle; }
 }
 
 .user-email {
-  font-size: 0.78rem;
-  color: var(--muted);
+  font-size: 0.72rem;
+  color: var(--accent);
   font-weight: 700;
+  background: rgba(0, 166, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 999px;
 }
 
 .btn-logout {
@@ -336,8 +396,8 @@ td { padding: 10px 12px; vertical-align: middle; }
 }
 
 .student-account-card.active {
-  border-color: var(--accent);
-  background: #eef3f8;
+  border-color: var(--accent-2);
+  background: rgba(0, 166, 255, 0.1);
 }
 
 .student-account-name {
@@ -435,7 +495,7 @@ td { padding: 10px 12px; vertical-align: middle; }
 .myself-btn {
   width: auto;
   flex-shrink: 0;
-  background: #1a9c4a;
+  background: var(--accent);
   border: none;
   border-radius: 999px;
   cursor: pointer;
@@ -449,10 +509,10 @@ td { padding: 10px 12px; vertical-align: middle; }
   font-weight: 700;
   font-size: 0.68rem;
   color: #fff;
-  box-shadow: 0 2px 6px rgba(26, 156, 74, 0.35);
+  box-shadow: 0 2px 6px rgba(6, 95, 70, 0.35);
   transition: all 0.15s;
 }
-.myself-btn:hover { background: #157a3b; transform: translateY(-1px); }
+.myself-btn:hover { background: var(--accent-h); transform: translateY(-1px); }
 .myself-icon { font-size: 0.9rem; line-height: 1; }
 
 
@@ -483,7 +543,7 @@ td { padding: 10px 12px; vertical-align: middle; }
 .myself-page-header h1 {
   font-size: 1.35rem;
   font-weight: 700;
-  color: #1a9c4a;
+  color: var(--accent);
 }
 
 .btn-close-myself {
@@ -515,7 +575,7 @@ td { padding: 10px 12px; vertical-align: middle; }
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--accent), #1a9c4a, var(--accent));
+  background: linear-gradient(90deg, var(--accent-2));
 }
 
 .footer-divider {
@@ -535,7 +595,7 @@ td { padding: 10px 12px; vertical-align: middle; }
 
 .footer-tagline {
   font-style: italic;
-  color: #1a9c4a;
+  color: var(--accent-2);
   font-size: 0.85rem;
   font-weight: 700;
   margin-top: 6px;
@@ -594,6 +654,7 @@ td { padding: 10px 12px; vertical-align: middle; }
 .footer-section {
   flex: 1;
   min-width: 0;
+  max-width: 100%;
   text-align: center;
 }
 
@@ -634,7 +695,7 @@ td { padding: 10px 12px; vertical-align: middle; }
   font-weight: 700;
   transition: color 0.15s;
 }
-.footer-links a:hover { color: var(--accent); }
+.footer-links a:hover { color: var(--accent-2); }
 
 .footer-contact {
   list-style: none;
@@ -642,18 +703,27 @@ td { padding: 10px 12px; vertical-align: middle; }
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  width: 100%;
 }
 .footer-contact li {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   font-size: 0.78rem;
   color: var(--text);
+  max-width: 100%;
+  text-align: left;
+}
+.footer-contact li span:last-child {
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .footer-icon {
   width: 15px;
   height: 15px;
   flex-shrink: 0;
+  margin-top: 2px;
   color: var(--accent);
 }
 .footer-icon svg { width: 100%; height: 100%; }
