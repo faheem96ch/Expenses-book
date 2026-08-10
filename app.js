@@ -176,6 +176,9 @@ function initApp() {
   document.getElementById('closeMyselfBtn').addEventListener('click', closeMyselfPage);
   document.getElementById('closeAboutBtn').addEventListener('click', closeAboutModal);
   document.getElementById('footerToggleBtn').addEventListener('click', toggleFooter);
+  document.getElementById('recordsToggleBtn').addEventListener('click', toggleRecordsSection);
+
+  initHeaderSearch();
 
   renderStudentAccounts();
   renderTable();
@@ -194,6 +197,81 @@ function toggleFooter() {
 }
 
 
+
+function toggleRecordsSection() {
+  const section = document.getElementById('allRecordsSection');
+  const arrow   = document.getElementById('recordsToggleArrow');
+  const isHidden = section.style.display === 'none' || section.style.display === '';
+  section.style.display = isHidden ? 'block' : 'none';
+  arrow.classList.toggle('rotated', isHidden);
+}
+
+function showRecordsSection() {
+  const section = document.getElementById('allRecordsSection');
+  const arrow   = document.getElementById('recordsToggleArrow');
+  section.style.display = 'block';
+  arrow.classList.add('rotated');
+}
+
+/* ============================================================
+   HEADER SEARCH — find a student/lender account by name
+   ============================================================ */
+function initHeaderSearch() {
+  const toggleBtn = document.getElementById('searchToggleBtn');
+  const box       = document.getElementById('searchBox');
+  const input     = document.getElementById('searchInput');
+  const results   = document.getElementById('searchResults');
+  const wrap      = document.getElementById('headerSearchWrap');
+
+  toggleBtn.addEventListener('click', () => {
+    const isHidden = box.style.display === 'none';
+    box.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) {
+      input.value = '';
+      results.innerHTML = '';
+      input.focus();
+    }
+  });
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    if (!q) { results.innerHTML = ''; return; }
+
+    const matchedKeys = new Set();
+    records.forEach(r => {
+      if (r.lender.toLowerCase().includes(q) || r.student.toLowerCase().includes(q)) {
+        matchedKeys.add(r.lender.trim().toLowerCase());
+      }
+    });
+    const matches = getStudentGroups().filter(g => matchedKeys.has(g.name.toLowerCase()));
+
+    if (matches.length === 0) {
+      results.innerHTML = '<div class="search-empty">No matching account found.</div>';
+      return;
+    }
+
+    results.innerHTML = matches.map(g => `
+      <div class="search-result-item" onclick="selectSearchResult('${escAttr(g.name)}')">
+        <span class="search-result-name">${esc(g.name)}</span>
+        <span class="search-result-total">Rs. ${g.total.toLocaleString('en-PK')}</span>
+      </div>
+    `).join('');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!wrap.contains(e.target)) box.style.display = 'none';
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') box.style.display = 'none';
+  });
+}
+
+function selectSearchResult(name) {
+  document.getElementById('searchBox').style.display = 'none';
+  showRecordsSection();
+  filterByStudent(name);
+}
 
 function openAboutModal() {
   document.getElementById('aboutModal').style.display = 'flex';
@@ -282,7 +360,7 @@ function renderStudentAccounts() {
       <div class="student-account-meta">${g.count} ${g.count === 1 ? 'entry' : 'entries'}</div>
       <div class="student-account-total">Rs. ${g.total.toLocaleString('en-PK')}</div>
       <div class="student-account-actions">
-        <button class="btn-view" onclick="filterByStudent('${escAttr(g.name)}')">View Ledger</button>
+        <button class="btn-view" onclick="filterByStudent('${escAttr(g.name)}')">View List</button>
         <button class="btn-student-download" onclick="downloadStudentPDF('${escAttr(g.name)}')">Download</button>
       </div>
     </div>`;
@@ -293,6 +371,7 @@ function renderStudentAccounts() {
 
 function filterByStudent(name) {
   currentFilter = name;
+  showRecordsSection();
   renderStudentAccounts();
   renderTable();
   document.getElementById('tableArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -440,7 +519,7 @@ function buildPDF(recordsList, titleText, filenamePrefix) {
 
   // ---- Page header function (called on each new page) ----
   function pageHeader(isFirst) {
-    doc.setFillColor(26, 58, 92);
+    doc.setFillColor(17, 46, 129);
     doc.rect(0, 0, W, isFirst ? 28 : 18, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
@@ -449,6 +528,7 @@ function buildPDF(recordsList, titleText, filenamePrefix) {
     if (isFirst) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
+      doc.setTextColor(240, 240, 240);
       doc.text('List of Records   Print Date: ' + today, W / 2, 21, { align: 'center' });
     }
   }
@@ -465,7 +545,7 @@ function buildPDF(recordsList, titleText, filenamePrefix) {
   doc.setFontSize(8);
   doc.text('Total Records: ' + recordsList.length, margin + 4, 41);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(139, 0, 0);
+  doc.setTextColor(0, 110, 182);
   doc.setFontSize(9);
   doc.text('Total Debt: Rs. ' + total.toLocaleString('en-PK'), W - margin - 4, 41, { align: 'right' });
 
@@ -536,7 +616,7 @@ function buildPDF(recordsList, titleText, filenamePrefix) {
     // Amount
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    doc.setTextColor(139, 0, 0);
+    doc.setTextColor(0, 110, 182);
     doc.text('Rs. ' + r.amount.toLocaleString('en-PK'), cols[3].x + 2, midY);
 
     // Date / Time
@@ -650,7 +730,7 @@ function renderOwnAccounts() {
       <div class="student-account-meta">${g.count} ${g.count === 1 ? 'entry' : 'entries'}</div>
       <div class="student-account-total">Rs. ${g.total.toLocaleString('en-PK')}</div>
       <div class="student-account-actions">
-        <button class="btn-view" onclick="filterByOwnPerson('${escAttr(g.name)}')">View Ledger</button>
+        <button class="btn-view" onclick="filterByOwnPerson('${escAttr(g.name)}')">View List</button>
         <button class="btn-student-download" onclick="downloadOwnPersonPDF('${escAttr(g.name)}')">Download</button>
       </div>
     </div>`;
@@ -774,7 +854,7 @@ function buildOwnPDF(recordsList, titleText, filenamePrefix) {
   const headers = ['No.', 'Given By', 'Amount', 'Date / Time', 'Reason'];
 
   function pageHeader(isFirst) {
-    doc.setFillColor(26, 58, 92);
+    doc.setFillColor(17, 46, 129);
     doc.rect(0, 0, W, isFirst ? 28 : 18, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
@@ -783,6 +863,7 @@ function buildOwnPDF(recordsList, titleText, filenamePrefix) {
     if (isFirst) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
+      doc.setTextColor(240, 240, 240);
       doc.text('List of Records   Print Date: ' + today, W / 2, 21, { align: 'center' });
     }
   }
@@ -798,9 +879,9 @@ function buildOwnPDF(recordsList, titleText, filenamePrefix) {
   doc.setFontSize(8);
   doc.text('Total Records: ' + recordsList.length, margin + 4, 41);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(139, 0, 0);
+  doc.setTextColor(0, 110, 182);
   doc.setFontSize(9);
-  doc.text('Total Borrowed: Rs. ' + total.toLocaleString('en-PK'), W - margin - 4, 41, { align: 'right' });
+  doc.text('Total Loan: Rs. ' + total.toLocaleString('en-PK'), W - margin - 4, 41, { align: 'right' });
 
   let y = 52;
 
@@ -854,7 +935,7 @@ function buildOwnPDF(recordsList, titleText, filenamePrefix) {
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    doc.setTextColor(139, 0, 0);
+    doc.setTextColor(0, 110, 182);
     doc.text('Rs. ' + r.amount.toLocaleString('en-PK'), cols[2].x + 2, midY);
 
     doc.setFont('helvetica', 'normal');
