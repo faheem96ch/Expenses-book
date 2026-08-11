@@ -182,6 +182,7 @@
             <li><a href="#">Home</a></li>
             <li><a href="#" onclick="openMyselfPage(); return false;">My Account</a></li>
             <li><a href="#" onclick="openAboutModal(); return false;">About Us</a></li>
+            <li><a href="#" onclick="triggerHeaderSearch(); return false;">Search</a></li>
           </ul>
         </div>
 
@@ -248,14 +249,25 @@
     <div class="myself-page-inner">
       <div class="myself-page-header">
         <h1>My Account</h1>
-        <button class="btn-close-myself" id="closeMyselfBtn" type="button">Close ✕</button>
+        <div class="myself-header-actions">
+          <div class="header-search" id="ownSearchWrap">
+            <button class="search-icon-btn-light" id="ownSearchToggleBtn" type="button" aria-label="Search my account">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+            <div class="search-box" id="ownSearchBox" style="display:none;">
+              <input type="text" id="ownSearchInput" placeholder="Search by name..." autocomplete="off"/>
+              <div class="search-results" id="ownSearchResults"></div>
+            </div>
+          </div>
+          <button class="btn-close-myself" id="closeMyselfBtn" type="button">Close ✕</button>
+        </div>
       </div>
 
       <section class="card">
         <h2 class="section-title">My Loans</h2>
 
         <div class="field">
-          <label for="ownFromName">Given By</label>
+          <label for="ownFromName">Received From</label>
           <input type="text" id="ownFromName" placeholder="Person's name"/>
         </div>
 

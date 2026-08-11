@@ -179,6 +179,7 @@ function initApp() {
   document.getElementById('recordsToggleBtn').addEventListener('click', toggleRecordsSection);
 
   initHeaderSearch();
+  initOwnSearch();
 
   renderStudentAccounts();
   renderTable();
@@ -271,6 +272,17 @@ function selectSearchResult(name) {
   document.getElementById('searchBox').style.display = 'none';
   showRecordsSection();
   filterByStudent(name);
+}
+
+function triggerHeaderSearch() {
+  const wrap  = document.getElementById('headerSearchWrap');
+  const box   = document.getElementById('searchBox');
+  const input = document.getElementById('searchInput');
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  box.style.display = 'block';
+  input.value = '';
+  document.getElementById('searchResults').innerHTML = '';
+  setTimeout(() => input.focus(), 350);
 }
 
 function openAboutModal() {
@@ -698,6 +710,59 @@ function resetOwnForm() {
   document.getElementById('ownTime').value = now.toTimeString().slice(0, 5);
 }
 
+/* ============================================================
+   MY ACCOUNT SEARCH — searches only within "My Account" names
+   ============================================================ */
+function initOwnSearch() {
+  const toggleBtn = document.getElementById('ownSearchToggleBtn');
+  const box       = document.getElementById('ownSearchBox');
+  const input     = document.getElementById('ownSearchInput');
+  const results   = document.getElementById('ownSearchResults');
+  const wrap      = document.getElementById('ownSearchWrap');
+
+  toggleBtn.addEventListener('click', () => {
+    const isHidden = box.style.display === 'none';
+    box.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) {
+      input.value = '';
+      results.innerHTML = '';
+      input.focus();
+    }
+  });
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    if (!q) { results.innerHTML = ''; return; }
+
+    const matches = getOwnGroups().filter(g => g.name.toLowerCase().includes(q));
+
+    if (matches.length === 0) {
+      results.innerHTML = '<div class="search-empty">No matching account found.</div>';
+      return;
+    }
+
+    results.innerHTML = matches.map(g => `
+      <div class="search-result-item" onclick="selectOwnSearchResult('${escAttr(g.name)}')">
+        <span class="search-result-name">${esc(g.name)}</span>
+        <span class="search-result-total">Rs. ${g.total.toLocaleString('en-PK')}</span>
+      </div>
+    `).join('');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!wrap.contains(e.target)) box.style.display = 'none';
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') box.style.display = 'none';
+  });
+}
+
+function selectOwnSearchResult(name) {
+  document.getElementById('ownSearchBox').style.display = 'none';
+  filterByOwnPerson(name);
+}
+
 /* ---- Grouped by the person the money was borrowed from ---- */
 function getOwnGroups() {
   const groups = {};
@@ -766,7 +831,7 @@ function renderOwnTable() {
     : ownRecords;
 
   if (ownCurrentFilter) {
-    titleEl.textContent = 'Given By ' + ownCurrentFilter;
+    titleEl.textContent = 'Repaid ' + ownCurrentFilter;
     totalLabelEl.textContent = 'Total Owed to ' + ownCurrentFilter;
     clearBtn.style.display = 'inline-block';
     dlBtn.textContent = 'Download ' + ownCurrentFilter + "'s Receipt";
@@ -808,7 +873,7 @@ function renderOwnTable() {
 
   area.innerHTML = `<div class="table-wrap"><table>
     <thead><tr>
-      <th>#</th><th>Given By</th><th>Amount</th><th>Reason</th><th>Date / Time</th><th></th>
+      <th>#</th><th>Repaid</th><th>Amount</th><th>Reason</th><th>Date / Time</th><th></th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
@@ -819,7 +884,7 @@ function downloadOwnAllPDF() {
   const list = ownCurrentFilter
     ? ownRecords.filter(r => r.from.trim().toLowerCase() === ownCurrentFilter.toLowerCase())
     : ownRecords;
-  const title = ownCurrentFilter ? 'Given By ' + ownCurrentFilter : 'My Loans Receipt';
+  const title = ownCurrentFilter ? 'Payment Return to ' + ownCurrentFilter : 'My Loans Receipt';
   const filePrefix = ownCurrentFilter ? ownCurrentFilter.replace(/\s+/g, '_') + '_Owed_Receipt' : 'My_Loans_Receipt';
   buildOwnPDF(list, title, filePrefix);
 }
@@ -827,7 +892,7 @@ function downloadOwnAllPDF() {
 function downloadOwnPersonPDF(personName) {
   const list = ownRecords.filter(r => r.from.trim().toLowerCase() === personName.toLowerCase());
   if (list.length === 0) return;
-  const title = 'Given By ' + personName;
+  const title = 'Payment Return to ' + personName;
   const filePrefix = personName.replace(/\s+/g, '_') + '_Owed_Receipt';
   buildOwnPDF(list, title, filePrefix);
 }
@@ -843,7 +908,7 @@ function buildOwnPDF(recordsList, titleText, filenamePrefix) {
   const today  = new Date().toLocaleDateString('en-PK');
   const total  = recordsList.reduce((s, r) => s + r.amount, 0);
 
-  // Columns: #, Given By, Amount, Date/Time, Reason
+  // Columns: #, Repayment, Amount, Date/Time, Reason
   const cols = [
     { x: margin,       w: 10 },
     { x: margin + 10,  w: 46 },
@@ -851,7 +916,7 @@ function buildOwnPDF(recordsList, titleText, filenamePrefix) {
     { x: margin + 86,  w: 30 },
     { x: margin + 116, w: W - margin - 116 - margin }
   ];
-  const headers = ['No.', 'Given By', 'Amount', 'Date / Time', 'Reason'];
+  const headers = ['No.', 'Repayment', 'Amount', 'Date / Time', 'Reason'];
 
   function pageHeader(isFirst) {
     doc.setFillColor(17, 46, 129);
