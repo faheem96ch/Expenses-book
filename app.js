@@ -1,19 +1,45 @@
 /* ============================================================
+   APP STATE — declared first so nothing accesses these before
+   they exist (e.g. an already-logged-in session on page reload).
+   ============================================================ */
+let records = [];
+let trashItems = [];
+let ownRecords = [];
+let currentFilter = null;     // student name currently being viewed, or null = all
+let ownCurrentFilter = null;  // person's name currently being viewed, or null = all
+let appInitialized = false;
+
+/* ============================================================
    AUTH (local only — no server, credentials stored on this
    device inside localStorage. Good for personal/hostel use.)
    ============================================================ */
-const AUTH_KEY    = 'hostelAuthAccount';   // { email, password }
+const AUTH_KEY    = 'hostelAuthAccounts';  // [{ name, password }, ...]
 const SESSION_KEY = 'hostelAuthSession';   // 'true' when logged in
 
 let isSignupMode = false;
 
-function getAccount() {
+function getAccounts() {
   const raw = localStorage.getItem(AUTH_KEY);
-  return raw ? JSON.parse(raw) : null;
+  const parsed = raw ? JSON.parse(raw) : [];
+  return Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []); // migrate old single-account format
 }
 
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+function saveAccounts(accounts) {
+  localStorage.setItem(AUTH_KEY, JSON.stringify(accounts));
+}
+
+function findAccountByName(name) {
+  return getAccounts().find(a => a.name.toLowerCase() === name.toLowerCase()) || null;
+}
+
+// Every account gets its own isolated data (records / own account / trash)
+// so that a new account never shows another account's previous data.
+let currentAccountKey = '';
+function accountKeyFor(name) {
+  return name.trim().toLowerCase();
+}
+function scopedKey(base) {
+  return base + '::' + currentAccountKey;
 }
 
 function setAuthError(msg) {
@@ -21,24 +47,16 @@ function setAuthError(msg) {
 }
 
 function refreshAuthScreenMode() {
-  const account = getAccount();
   const titleEl   = document.getElementById('authSubText');
   const btnEl     = document.getElementById('authSubmitBtn');
   const confirmEl = document.getElementById('authConfirmField');
   const switchEl  = document.getElementById('authSwitchText');
 
-  // If no account exists yet, force signup mode
-  if (!account) isSignupMode = true;
-
   if (isSignupMode) {
     titleEl.textContent = 'Create your account to get started';
     btnEl.textContent = 'Create Account';
     confirmEl.style.display = 'flex';
-    if (account) {
-      switchEl.innerHTML = 'Already have an account? <a id="authSwitchLink">Login</a>';
-    } else {
-      switchEl.innerHTML = '';
-    }
+    switchEl.innerHTML = 'Already have an account? <a id="authSwitchLink">Login</a>';
   } else {
     titleEl.textContent = 'Sign in to continue';
     btnEl.textContent = 'Login';
@@ -58,43 +76,45 @@ function refreshAuthScreenMode() {
 
 function handleAuthSubmit() {
   setAuthError('');
-  const email    = document.getElementById('authEmail').value.trim().toLowerCase();
+  const name     = document.getElementById('authName').value.trim();
   const password = document.getElementById('authPassword').value;
 
-  if (!email || !isValidEmail(email)) { setAuthError('Please enter a valid email.'); return; }
+  if (!name) { setAuthError('Please enter your name or email.'); return; }
   if (!password) { setAuthError('Please enter a password.'); return; }
-
-  const account = getAccount();
 
   if (isSignupMode) {
     const confirm = document.getElementById('authPasswordConfirm').value;
     if (password.length < 4) { setAuthError('Password must be at least 4 characters.'); return; }
     if (password !== confirm) { setAuthError('Passwords do not match.'); return; }
+    if (findAccountByName(name)) { setAuthError('This email is already registered.'); return; }
 
-    localStorage.setItem(AUTH_KEY, JSON.stringify({ email, password }));
-    startSession(email);
+    const accounts = getAccounts();
+    accounts.push({ name, password });
+    saveAccounts(accounts);
+    startSession(name);
     return;
   }
 
   // Login mode
+  const account = findAccountByName(name);
   if (!account) { setAuthError('No account found. Please create one.'); return; }
-  if (account.email !== email || account.password !== password) {
+  if (account.password !== password) {
     setAuthError('Incorrect email or password.');
     return;
   }
-  startSession(email);
+  startSession(account.name);
 }
 
-function startSession(email) {
+function startSession(name) {
   sessionStorage.setItem(SESSION_KEY, 'true');
-  sessionStorage.setItem('hostelAuthEmail', email);
-  showApp(email);
+  sessionStorage.setItem('hostelAuthName', name);
+  showApp(name);
 }
 
 function logout() {
   sessionStorage.removeItem(SESSION_KEY);
-  sessionStorage.removeItem('hostelAuthEmail');
-  document.getElementById('authEmail').value = '';
+  sessionStorage.removeItem('hostelAuthName');
+  document.getElementById('authName').value = '';
   document.getElementById('authPassword').value = '';
   document.getElementById('authPasswordConfirm').value = '';
   isSignupMode = false;
@@ -104,26 +124,29 @@ function logout() {
   document.getElementById('authScreen').style.display = 'flex';
 }
 
-function showApp(email) {
+function showApp(name) {
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appMain').style.display = 'block';
-  document.getElementById('loggedInEmail').textContent = email;
+  document.getElementById('loggedInName').textContent = name;
+  currentAccountKey = accountKeyFor(name);
+  loadUserData();
   initApp();
 }
 
 function checkExistingSession() {
   const loggedIn = sessionStorage.getItem(SESSION_KEY) === 'true';
-  const email    = sessionStorage.getItem('hostelAuthEmail');
-  if (loggedIn && email) {
-    showApp(email);
+  const name     = sessionStorage.getItem('hostelAuthName');
+  if (loggedIn && name) {
+    showApp(name);
   } else {
+    isSignupMode = getAccounts().length === 0; // default to signup only when no accounts exist yet
     refreshAuthScreenMode();
   }
 }
 
 document.getElementById('authSubmitBtn').addEventListener('click', handleAuthSubmit);
 document.getElementById('logoutBtn').addEventListener('click', logout);
-[document.getElementById('authEmail'), document.getElementById('authPassword'), document.getElementById('authPasswordConfirm')]
+[document.getElementById('authName'), document.getElementById('authPassword'), document.getElementById('authPasswordConfirm')]
   .forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter') handleAuthSubmit(); }));
 
 checkExistingSession();
@@ -132,9 +155,13 @@ checkExistingSession();
 /* ============================================================
    MAIN APP
    ============================================================ */
-let records = JSON.parse(localStorage.getItem('hostelDebt') || '[]');
-let currentFilter = null; // student name currently being viewed, or null = all
-let appInitialized = false;
+function loadUserData() {
+  records    = JSON.parse(localStorage.getItem(scopedKey('hostelDebt')) || '[]');
+  trashItems = JSON.parse(localStorage.getItem(scopedKey('hostelTrash')) || '[]');
+  ownRecords = JSON.parse(localStorage.getItem(scopedKey('myOwnDebt')) || '[]');
+  currentFilter = null;
+  ownCurrentFilter = null;
+}
 
 function getAmPmTime() {
   const now = new Date();
@@ -175,6 +202,7 @@ function initApp() {
   document.getElementById('myselfToggleBtn').addEventListener('click', openMyselfPage);
   document.getElementById('closeMyselfBtn').addEventListener('click', closeMyselfPage);
   document.getElementById('closeAboutBtn').addEventListener('click', closeAboutModal);
+  document.getElementById('closeTrashBtn').addEventListener('click', closeTrashPage);
   document.getElementById('footerToggleBtn').addEventListener('click', toggleFooter);
   document.getElementById('recordsToggleBtn').addEventListener('click', toggleRecordsSection);
 
@@ -329,13 +357,17 @@ function addRecord() {
 }
 
 function save() {
-  localStorage.setItem('hostelDebt', JSON.stringify(records));
+  localStorage.setItem(scopedKey('hostelDebt'), JSON.stringify(records));
 }
 
 function deleteRecord(id) {
-  if (!confirm('Delete this record?')) return;
-  records = records.filter(r => r.id !== id);
+  if (!confirm('Move this record to Trash?')) return;
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  records = records.filter(x => x.id !== id);
+  trashItems.unshift({ ...r, _type: 'main' });
   save();
+  saveTrash();
   renderStudentAccounts();
   renderTable();
 }
@@ -346,7 +378,7 @@ function getStudentGroups() {
   records.forEach(r => {
     const key = r.lender.trim().toLowerCase();
     if (!groups[key]) groups[key] = { name: r.lender.trim(), total: 0, count: 0 };
-    groups[key].total += r.amount;
+    if (!r.struck) groups[key].total += r.amount;
     groups[key].count += 1;
   });
   return Object.values(groups).sort((a, b) => b.total - a.total);
@@ -432,7 +464,7 @@ function renderTable() {
     return;
   }
 
-  const total = visibleRecords.reduce((s, r) => s + r.amount, 0);
+  const total = visibleRecords.reduce((s, r) => s + (r.struck ? 0 : r.amount), 0);
   document.getElementById('totalAmount').textContent = 'Rs. ' + total.toLocaleString('en-PK');
   bar.style.display = 'flex';
   dlBtn.style.display = 'inline-block';
@@ -444,9 +476,10 @@ function renderTable() {
       <td class="td-muted">${serial}</td>
       <td class="td-bold">${esc(r.student)}</td>
       <td>${esc(r.lender)}</td>
-      <td class="td-amount">Rs. ${r.amount.toLocaleString('en-PK')}</td>
+      <td class="td-amount${r.struck ? ' struck-amount' : ''}">Rs. ${r.amount.toLocaleString('en-PK')}</td>
       <td class="td-reason" title="${esc(r.reason)}">${esc(r.reason)}</td>
       <td class="td-muted" style="white-space:nowrap;">${r.date} &nbsp; ${r.time}</td>
+      <td class="td-check"><input type="checkbox" class="strike-check" ${r.struck ? 'checked' : ''} onchange="toggleStrike(${r.id})" title="Mark as settled"/></td>
       <td><button class="btn-del" onclick="deleteRecord(${r.id})">Delete</button></td>
     </tr>`;
   });
@@ -454,10 +487,19 @@ function renderTable() {
   area.innerHTML = `<div class="table-wrap"><table>
     <thead><tr>
       <th>#</th><th>name</th><th>nextname</th>
-      <th>Amount</th><th>Reason</th><th>Date / Time</th><th></th>
+      <th>Amount</th><th>Reason</th><th>Date / Time</th><th>Paid</th><th></th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
+}
+
+function toggleStrike(id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  r.struck = !r.struck;
+  save();
+  renderTable();
+  renderStudentAccounts();
 }
 
 function resetForm() {
@@ -515,7 +557,7 @@ function buildPDF(recordsList, titleText, filenamePrefix) {
   const H      = doc.internal.pageSize.getHeight();
   const margin = 14;
   const today  = new Date().toLocaleDateString('en-PK');
-  const total  = recordsList.reduce((s, r) => s + r.amount, 0);
+  const total  = recordsList.reduce((s, r) => s + (r.struck ? 0 : r.amount), 0);
 
   // Column definitions — reason gets remaining space
   // #, Borrower, Lender, Amount, Date/Time, Reason
@@ -628,8 +670,15 @@ function buildPDF(recordsList, titleText, filenamePrefix) {
     // Amount
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    doc.setTextColor(0, 110, 182);
-    doc.text('Rs. ' + r.amount.toLocaleString('en-PK'), cols[3].x + 2, midY);
+    doc.setTextColor(r.struck ? 150 : 0, r.struck ? 150 : 110, r.struck ? 150 : 182);
+    const amountText = 'Rs. ' + r.amount.toLocaleString('en-PK');
+    doc.text(amountText, cols[3].x + 2, midY);
+    if (r.struck) {
+      const tw = doc.getTextWidth(amountText);
+      doc.setDrawColor(150, 150, 150);
+      doc.setLineWidth(0.35);
+      doc.line(cols[3].x + 2, midY - 1.3, cols[3].x + 2 + tw, midY - 1.3);
+    }
 
     // Date / Time
     doc.setFont('helvetica', 'normal');
@@ -666,9 +715,6 @@ function buildPDF(recordsList, titleText, filenamePrefix) {
    MY OWN ACCOUNT — money the logged-in user borrowed from others
    (kept in a separate localStorage key from the main records)
    ============================================================ */
-let ownRecords = JSON.parse(localStorage.getItem('myOwnDebt') || '[]');
-let ownCurrentFilter = null; // person's name currently being viewed, or null = all
-
 function addOwnRecord() {
   const from    = document.getElementById('ownFromName').value.trim();
   const amount  = parseFloat(document.getElementById('ownAmount').value);
@@ -691,13 +737,17 @@ function addOwnRecord() {
 }
 
 function saveOwn() {
-  localStorage.setItem('myOwnDebt', JSON.stringify(ownRecords));
+  localStorage.setItem(scopedKey('myOwnDebt'), JSON.stringify(ownRecords));
 }
 
 function deleteOwnRecord(id) {
-  if (!confirm('Delete this record?')) return;
-  ownRecords = ownRecords.filter(r => r.id !== id);
+  if (!confirm('Move this record to Trash?')) return;
+  const r = ownRecords.find(x => x.id === id);
+  if (!r) return;
+  ownRecords = ownRecords.filter(x => x.id !== id);
+  trashItems.unshift({ ...r, _type: 'own' });
   saveOwn();
+  saveTrash();
   renderOwnAccounts();
   renderOwnTable();
 }
@@ -769,7 +819,7 @@ function getOwnGroups() {
   ownRecords.forEach(r => {
     const key = r.from.trim().toLowerCase();
     if (!groups[key]) groups[key] = { name: r.from.trim(), total: 0, count: 0 };
-    groups[key].total += r.amount;
+    if (!r.struck) groups[key].total += r.amount;
     groups[key].count += 1;
   });
   return Object.values(groups).sort((a, b) => b.total - a.total);
@@ -853,7 +903,7 @@ function renderOwnTable() {
     return;
   }
 
-  const total = visible.reduce((s, r) => s + r.amount, 0);
+  const total = visible.reduce((s, r) => s + (r.struck ? 0 : r.amount), 0);
   document.getElementById('ownTotalAmount').textContent = 'Rs. ' + total.toLocaleString('en-PK');
   bar.style.display = 'flex';
   dlBtn.style.display = 'inline-block';
@@ -864,19 +914,29 @@ function renderOwnTable() {
     rows += `<tr>
       <td class="td-muted">${serial}</td>
       <td class="td-bold">${esc(r.from)}</td>
-      <td class="td-amount">Rs. ${r.amount.toLocaleString('en-PK')}</td>
+      <td class="td-amount${r.struck ? ' struck-amount' : ''}">Rs. ${r.amount.toLocaleString('en-PK')}</td>
       <td class="td-reason" title="${esc(r.reason)}">${esc(r.reason)}</td>
       <td class="td-muted" style="white-space:nowrap;">${r.date} &nbsp; ${r.time}</td>
+      <td class="td-check"><input type="checkbox" class="strike-check" ${r.struck ? 'checked' : ''} onchange="toggleOwnStrike(${r.id})" title="Mark as settled"/></td>
       <td><button class="btn-del" onclick="deleteOwnRecord(${r.id})">Delete</button></td>
     </tr>`;
   });
 
   area.innerHTML = `<div class="table-wrap"><table>
     <thead><tr>
-      <th>#</th><th>Repaid</th><th>Amount</th><th>Reason</th><th>Date / Time</th><th></th>
+      <th>#</th><th>Repaid</th><th>Amount</th><th>Reason</th><th>Date / Time</th><th>Paid</th><th></th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
+}
+
+function toggleOwnStrike(id) {
+  const r = ownRecords.find(x => x.id === id);
+  if (!r) return;
+  r.struck = !r.struck;
+  saveOwn();
+  renderOwnTable();
+  renderOwnAccounts();
 }
 
 /* ---- PDF for own borrowed money ---- */
@@ -906,7 +966,7 @@ function buildOwnPDF(recordsList, titleText, filenamePrefix) {
   const H      = doc.internal.pageSize.getHeight();
   const margin = 14;
   const today  = new Date().toLocaleDateString('en-PK');
-  const total  = recordsList.reduce((s, r) => s + r.amount, 0);
+  const total  = recordsList.reduce((s, r) => s + (r.struck ? 0 : r.amount), 0);
 
   // Columns: #, Repayment, Amount, Date/Time, Reason
   const cols = [
@@ -1000,8 +1060,15 @@ function buildOwnPDF(recordsList, titleText, filenamePrefix) {
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    doc.setTextColor(0, 110, 182);
-    doc.text('Rs. ' + r.amount.toLocaleString('en-PK'), cols[2].x + 2, midY);
+    doc.setTextColor(r.struck ? 150 : 0, r.struck ? 150 : 110, r.struck ? 150 : 182);
+    const amountText = 'Rs. ' + r.amount.toLocaleString('en-PK');
+    doc.text(amountText, cols[2].x + 2, midY);
+    if (r.struck) {
+      const tw = doc.getTextWidth(amountText);
+      doc.setDrawColor(150, 150, 150);
+      doc.setLineWidth(0.35);
+      doc.line(cols[2].x + 2, midY - 1.3, cols[2].x + 2 + tw, midY - 1.3);
+    }
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
@@ -1030,4 +1097,86 @@ function buildOwnPDF(recordsList, titleText, filenamePrefix) {
     doc.setFontSize(7);
     doc.text('Copyright © M.Faheem Register — ' + today, W / 2, H - 7, { align: 'center' });
   }
+}
+/* ============================================================
+   TRASH — deleted records (from either "All Records" or
+   "My Account") land here first, and can be restored or
+   removed permanently from this page.
+   ============================================================ */
+function saveTrash() {
+  localStorage.setItem(scopedKey('hostelTrash'), JSON.stringify(trashItems));
+}
+
+function openTrashPage() {
+  document.getElementById('trashPage').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  renderTrash();
+}
+
+function closeTrashPage() {
+  document.getElementById('trashPage').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function renderTrash() {
+  const area  = document.getElementById('trashArea');
+  const badge = document.getElementById('trashCountBadge');
+
+  badge.textContent = trashItems.length + ' Items';
+
+  if (trashItems.length === 0) {
+    area.innerHTML = '<div class="empty-state">Trash is empty.</div>';
+    return;
+  }
+
+  let rows = '';
+  trashItems.forEach((r, i) => {
+    const serial   = trashItems.length - i;
+    const nameCell = r._type === 'own' ? esc(r.from) : (esc(r.student) + ' &rarr; ' + esc(r.lender));
+    rows += `<tr>
+      <td class="td-muted">${serial}</td>
+      <td class="td-bold">${nameCell}</td>
+      <td class="td-amount${r.struck ? ' struck-amount' : ''}">Rs. ${r.amount.toLocaleString('en-PK')}</td>
+      <td class="td-reason" title="${esc(r.reason)}">${esc(r.reason)}</td>
+      <td class="td-muted" style="white-space:nowrap;">${r.date} &nbsp; ${r.time}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-view" onclick="restoreFromTrash(${r.id})">Restore</button>
+        <button class="btn-del" onclick="deleteForeverFromTrash(${r.id})">Delete Forever</button>
+      </td>
+    </tr>`;
+  });
+
+  area.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>#</th><th>Name</th><th>Amount</th><th>Reason</th><th>Date / Time</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function restoreFromTrash(id) {
+  const item = trashItems.find(x => x.id === id);
+  if (!item) return;
+  trashItems = trashItems.filter(x => x.id !== id);
+  const { _type, ...clean } = item;
+  if (_type === 'own') {
+    ownRecords.unshift(clean);
+    saveOwn();
+    renderOwnAccounts();
+    renderOwnTable();
+  } else {
+    records.unshift(clean);
+    save();
+    renderStudentAccounts();
+    renderTable();
+  }
+  saveTrash();
+  renderTrash();
+}
+
+function deleteForeverFromTrash(id) {
+  if (!confirm('Permanently delete this record? This cannot be undone.')) return;
+  trashItems = trashItems.filter(x => x.id !== id);
+  saveTrash();
+  renderTrash();
 }
