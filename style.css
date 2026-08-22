@@ -253,6 +253,58 @@ td { padding: 10px 12px; vertical-align: middle; }
   .records-header { flex-direction: column; gap: 10px; }
 }
 
+/* ===== EXTRA SMALL PHONES (fits fully without zoom/scroll) ===== */
+@media (max-width: 480px) {
+  .container { padding: 18px 10px 50px; }
+  body { font-size: 13px; }
+
+  .header { padding: 14px 14px; margin-bottom: 16px; }
+  .header h1 { font-size: 1.15rem; }
+  .header p { font-size: 0.78rem; }
+
+  .header-right { width: 100%; justify-content: space-between; gap: 8px; }
+  .user-email { display: none; }
+  .btn-logout { padding: 6px 10px; font-size: 0.72rem; }
+  .search-icon-btn { width: 30px; height: 30px; }
+
+  .card { padding: 14px 12px; margin-bottom: 14px; }
+  .section-title { font-size: 0.92rem; margin-bottom: 12px; }
+
+  .card-header-row { flex-wrap: wrap; }
+  .myself-btn { font-size: 0.65rem; padding: 5px 10px; }
+
+  input { font-size: 0.85rem; padding: 8px 10px; }
+  label { font-size: 0.68rem; }
+
+  .btn-primary { font-size: 0.85rem; padding: 10px; }
+
+  .records-header-actions { width: 100%; }
+  .records-header-actions button { flex: 1; font-size: 0.72rem; padding: 7px 8px; }
+
+  table { font-size: 0.76rem; }
+  th, td { padding: 7px 8px; }
+  .td-reason { max-width: 100px; }
+
+  .total-bar { padding: 10px 12px; }
+  .total-value { font-size: 0.95rem; }
+
+  .search-box { width: 220px; }
+
+  .myself-page { padding: 18px 10px 50px; }
+  .myself-page-header h1 { font-size: 1.1rem; }
+  .btn-close-myself { padding: 6px 10px; font-size: 0.72rem; }
+
+  .about-modal-card { padding: 22px 16px 18px; }
+  .footer-title { font-size: 1.05rem; }
+  .footer-desc { font-size: 0.78rem; }
+
+  .site-footer { padding: 18px 14px 10px; }
+  .footer-heading { font-size: 0.74rem; }
+  .footer-links a, .footer-contact li { font-size: 0.76rem; }
+
+  #toast { font-size: 0.78rem; padding: 9px 20px; bottom: 16px; }
+}
+
 /* ===== AUTH SCREEN ===== */
 .auth-wrap {
   min-height: 100vh;
@@ -385,6 +437,8 @@ td { padding: 10px 12px; vertical-align: middle; }
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .header-search { position: relative; }
@@ -947,3 +1001,39 @@ td { padding: 10px 12px; vertical-align: middle; }
   transition: transform 0.3s ease;
 }
 .footer-toggle-arrow.rotated { transform: rotate(180deg); }
+/* ===== SpendFlow Logo Styles ===== */
+.auth-logo {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  margin: 0 auto 12px;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+.header-brand .header-logo {
+  height: 70px;
+  width: auto;
+  object-fit: contain;
+  order: 1;
+}
+@media (max-width: 480px) {
+  .header-brand .header-logo { height: 56px; }
+}
+.header-brand .header-brand-name {
+  order: 2;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+.header-brand p {
+  order: 3;
+  flex-basis: 100%;
+  margin: 0;
+}
